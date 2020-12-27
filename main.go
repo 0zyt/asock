@@ -1,8 +1,6 @@
 package main
 
-import (
-	"log"
-)
+import "log"
 
 func main() {
 	server, err := NewLocalServer("127.0.0.1:7474", "127.0.0.1:12346")
@@ -10,6 +8,6 @@ func main() {
 		log.Fatalln(err)
 	}
 	go server.Listen()
-	newServer, err := NewServer("127.0.0.1:12346")
+	newServer, _ := NewServer("127.0.0.1:12346")
 	newServer.Listen()
 }

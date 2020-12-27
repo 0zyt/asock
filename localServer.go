@@ -1,9 +1,7 @@
 package main
 
 import (
-	"crypto/sha1"
 	"github.com/xtaci/kcp-go"
-	"golang.org/x/crypto/pbkdf2"
 	"io"
 	"log"
 	"net"
@@ -32,34 +30,30 @@ func (local *LocalConfig) Listen() error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
-	for {
-		userConn, err := listener.AcceptTCP()
+	protocol := func(conn *net.Conn) {
+		Conn := (*conn).(*net.TCPConn)
+		Conn.SetLinger(0)
+		defer Conn.Close()
+		//key := pbkdf2.Key([]byte("demo pass"), []byte("demo salt"), 1024, 32, sha1.New)
+		//block, _ := kcp.NewAESBlockCrypt(key)
+		//proxyServer, err := kcp.DialWithOptions(local.remote.String(), block, 10, 3)
+		proxyServer, err := kcp.Dial(local.remote.String())
 		if err != nil {
 			log.Println(err)
-			continue
+			return
 		}
-		userConn.SetLinger(0)
-		go func(Conn *net.TCPConn) {
-			defer Conn.Close()
-			key := pbkdf2.Key([]byte("demo pass"), []byte("demo salt"), 1024, 32, sha1.New)
-			block, _ := kcp.NewAESBlockCrypt(key)
-			proxyServer, err := kcp.DialWithOptions(local.remote.String(), block, 10, 3)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			defer proxyServer.Close()
-			go func() {
-				for {
-					io.Copy(proxyServer, userConn)
-				}
-				userConn.Close()
-				proxyServer.Close()
-			}()
+		defer proxyServer.Close()
+		go func() {
 			for {
-				io.Copy(userConn, proxyServer)
+				io.Copy(proxyServer, Conn)
+				Conn.Close()
+				proxyServer.Close()
 			}
-		}(userConn)
+		}()
+		for {
+			io.Copy(Conn, proxyServer)
+		}
 	}
+	HandleConn(listener, protocol)
+	return nil
 }
