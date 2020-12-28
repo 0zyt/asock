@@ -30,6 +30,7 @@ func (s *ServerConfig) Listen() error {
 	}
 	protocol := func(conn *net.Conn) {
 		Conn := (*conn).(*kcp.UDPSession)
+		Conn.SetWindowSize(1024, 1024)
 		Conn.SetStreamMode(true)
 		Conn.SetWriteDelay(false)
 		Conn.SetNoDelay(1, 40, 1, 1)
@@ -74,9 +75,11 @@ func (s *ServerConfig) Listen() error {
 		}
 		go func() {
 			for {
-				io.Copy(Conn, dstServer)
-				Conn.Close()
-				dstServer.Close()
+				written, _ := io.Copy(Conn, dstServer)
+				if written <= 0 {
+					Conn.Close()
+					dstServer.Close()
+				}
 			}
 		}()
 		for {
