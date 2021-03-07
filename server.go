@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"github.com/xtaci/kcp-go"
 	"io"
 	"net"
@@ -36,6 +37,7 @@ func (s *ServerConfig) Listen() error {
 		Conn.SetNoDelay(1, 40, 1, 1)
 		defer Conn.Close()
 		_, err := Conn.Read(buf)
+		fmt.Println(buf)
 		if err != nil || buf[0] != 5 {
 			return
 		}
@@ -74,17 +76,13 @@ func (s *ServerConfig) Listen() error {
 			Conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 		}
 		go func() {
-			for {
-				written, _ := io.Copy(Conn, dstServer)
-				if written <= 0 {
-					Conn.Close()
-					dstServer.Close()
-				}
+			written, _ := io.Copy(Conn, dstServer)
+			if written <= 0 {
+				Conn.Close()
+				dstServer.Close()
 			}
 		}()
-		for {
-			io.Copy(dstServer, Conn)
-		}
+		io.Copy(dstServer, Conn)
 	}
 	HandleConn(listener, protocol)
 	return nil

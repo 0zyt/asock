@@ -43,18 +43,9 @@ func (local *LocalConfig) Listen() error {
 			return
 		}
 		defer proxyServer.Close()
-		go func() {
-			for {
-				written, _ := io.Copy(proxyServer, Conn)
-				if written <= 0 {
-					Conn.Close()
-					proxyServer.Close()
-				}
-			}
-		}()
-		for {
-			io.Copy(Conn, proxyServer)
-		}
+		go io.Copy(proxyServer, Conn)
+		io.Copy(Conn, proxyServer)
+
 	}
 	HandleConn(listener, protocol)
 	return nil
